@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060a06">
+<title>PlantSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --void:    #060a06;
+  --deep:    #0a0f0a;
+  --surface: #0f1a0f;
+  --raised:  #162116;
+  --border:  #1e2e1e;
+  --border2: #243824;
+  --glow:    #4ade80;
+  --glow2:   #22c55e;
+  --jade:    #34d399;
+  --teal:    #2dd4bf;
+  --amber:   #fbbf24;
+  --coral:   #fb7185;
+  --violet:  #a78bfa;
+  --sky:     #38bdf8;
+  --cream:   #faf7f0;
+  --warm:    #e8e0d0;
+  --muted:   #4a6b4a;
+  --ghost:   #2a3a2a;
+}
+
+html,body{height:100%;overflow-x:hidden;}
+
+body{
+  font-family:'Outfit',sans-serif;
+  background:var(--void);
+  color:var(--cream);
+  min-height:100vh;
+  cursor:none;
+}
+
+/* ─── CURSOR ─────────────────────────────────────────────── */
+#c1,#c2{position:fixed;border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);}
+#c1{width:8px;height:8px;background:var(--glow);mix-blend-mode:screen;transition:width .15s,height .15s,background .2s;}
+#c2{width:32px;height:32px;border:1px solid #4ade8066;transition:transform .2s ease-out,width .3s,height .3s;}
+
+/* ─── LOADER ─────────────────────────────────────────────── */
+#loader{
+  position:fixed;inset:0;background:var(--void);z-index:9000;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2rem;
+  transition:opacity 1s ease;
+}
+#loader.fade{opacity:0;pointer-events:none;}
+.ldr-ring{
+  width:80px;height:80px;position:relative;
+}
+.ldr-ring svg{animation:ldr-rot 2s linear infinite;}
+@keyframes ldr-rot{to{transform:rotate(360deg);}}
+.ldr-arc{fill:none;stroke:var(--glow);stroke-width:1.5;stroke-linecap:round;stroke-dasharray:60 200;animation:ldr-dash 2s ease-in-out infinite;}
+@keyframes ldr-dash{0%{stroke-dashoffset:0;}50%{stroke-dashoffset:-100;}100%{stroke-dashoffset:-251;}}
+.ldr-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;}
+.ldr-txt{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);}
+
+/* ─── BACKGROUND ─────────────────────────────────────────── */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+/* ─── WRAP ───────────────────────────────────────────────── */
+.wrap{position:relative;z-index:2;max-width:1280px;margin:0 auto;padding:2rem 2rem 8rem;}
+
+/* ─── HEADER ─────────────────────────────────────────────── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.5rem 0 3rem;
+  gap:1rem;flex-wrap:wrap;
+}
+.logo{display:flex;align-items:center;gap:1rem;}
+.logo-orb{
+  width:44px;height:44px;border-radius:50%;
+  background:conic-gradient(from 0deg,#1a3d1a,#4ade8044,#1a3d1a);
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;
+  animation:orb-rot 8s linear infinite;
+  box-shadow:0 0 30px #4ade8022,inset 0 0 20px #0a1a0a;
+}
+@keyframes orb-rot{to{transform:rotate(360deg);}}
+.logo-orb span{animation:orb-rot 8s linear infinite reverse;}
+.logo-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.9rem;font-weight:300;letter-spacing:.02em;
+  line-height:1;
+}
+.logo-name b{font-weight:600;color:var(--glow);}
+.logo-tag{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:.2rem;}
+.btn{
+  font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.65rem 1.4rem;border-radius:999px;cursor:none;
+  border:1px solid var(--border2);background:transparent;color:var(--muted);
+  position:relative;overflow:hidden;transition:color .3s,border-color .3s;
+}
+.btn-glow{position:absolute;inset:0;background:radial-gradient(circle at center,#4ade8022,transparent 70%);opacity:0;transition:opacity .3s;}
+.btn:hover .btn-glow,.btn.on .btn-glow{opacity:1;}
+.btn:hover,.btn.on{color:var(--glow);border-color:#4ade8055;}
+
+/* ─── STATUS ─────────────────────────────────────────────── */
+.status-bar{
+  display:flex;align-items:center;gap:.8rem;
+  margin-bottom:3.5rem;
+  padding:.5rem 1.2rem;
+  background:#ffffff03;border:1px solid var(--border);border-radius:100px;
+  font-family:'Space Mono',monospace;font-size:.6rem;
+  color:var(--muted);letter-spacing:.08em;
+  width:fit-content;max-width:100%;
+}
+.s-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .4s;}
+.s-dot.live{background:var(--glow);box-shadow:0 0 8px var(--glow);animation:s-blink 2s ease-in-out infinite;}
+.s-dot.err{background:var(--coral);}
+@keyframes s-blink{50%{opacity:.3;}}
+#s-time{margin-left:auto;opacity:.5;}
+
+/* ─── HERO ROW ───────────────────────────────────────────── */
+.hero{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 1fr;
+  gap:1.2rem;
+  margin-bottom:1.5rem;
+}
+@media(max-width:900px){.hero{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.hero{grid-template-columns:1fr 1fr;gap:.8rem;}}
+
+/* ─── METRIC CARD ────────────────────────────────────────── */
+.mc{
+  position:relative;border-radius:28px;overflow:hidden;
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:2rem 1.8rem;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1),border-color .4s;
+  cursor:none;
+}
+.mc::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,var(--mc-glow,#4ade8012),transparent 70%);
+  transition:opacity .4s;opacity:.5;
+}
+.mc:hover{transform:translateY(-6px) scale(1.01);border-color:var(--mc-col,#4ade8033);}
+.mc:hover::before{opacity:1;}
+
+/* Alert states */
+.mc.warn{border-color:#fbbf2444;background:#1a150a;}
+.mc.warn::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,#fbbf2415,transparent 70%);}
+.mc.hot{border-color:#fb718544;background:#1a0a10;}
+.mc.hot::before{background:radial-gradient(ellipse 80% 60% at 50% 0%,#fb718515,transparent 70%);}
+
+.mc-label{
+  font-family:'Space Mono',monospace;font-size:.55rem;
+  letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:1.8rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.mc-label .dot{width:4px;height:4px;border-radius:50%;background:var(--mc-col,var(--glow));}
+
+/* Big arc */
+.arc-wrap{position:relative;width:120px;height:120px;margin:0 auto 1.2rem;}
+.arc-wrap svg{transform:rotate(-90deg);}
+.arc-track{fill:none;stroke:var(--border2);stroke-width:2.5;}
+.arc-fill{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:0 326;transition:stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1);}
+.arc-glow{fill:none;stroke-width:6;stroke-linecap:round;stroke-dasharray:0 326;opacity:.2;filter:blur(4px);transition:stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1);}
+.arc-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.arc-val{
+  font-family:'Cormorant Garamond',serif;
+  font-size:2.4rem;font-weight:300;line-height:1;
+  letter-spacing:-.03em;transition:color .5s;
+}
+.arc-unit{font-size:.55rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-top:.2rem;}
+
+.mc-footer{
+  display:flex;justify-content:space-between;align-items:center;
+  padding-top:1rem;border-top:1px solid var(--border);
+  font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);
+}
+.mc-name{letter-spacing:.1em;text-transform:uppercase;}
+.mc-trend{font-size:.6rem;transition:color .4s;}
+
+/* ─── BOTTOM GRID ────────────────────────────────────────── */
+.grid2{display:grid;grid-template-columns:1fr 360px;gap:1.2rem;}
+@media(max-width:960px){.grid2{grid-template-columns:1fr;}}
+
+/* ─── CHART CARD ─────────────────────────────────────────── */
+.chart-c{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:28px;padding:2rem;overflow:hidden;position:relative;
+}
+.chart-c::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,#4ade8044,transparent);
+}
+.cc-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.5rem;}
+.cc-title{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:300;font-style:italic;color:var(--cream);}
+.cc-sub{font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);letter-spacing:.1em;}
+#sparkCanvas{width:100%;height:140px;display:block;border-radius:8px;}
+
+/* ─── MINI CHART (soil) ── */
+#soilCanvas{width:100%;height:60px;display:block;border-radius:8px;margin-top:1rem;}
+
+/* ─── JSON LIVE ──────────────────────────────────────────── */
+.json-wrap{
+  margin-top:1.5rem;border-radius:16px;overflow:hidden;
+  border:1px solid var(--border);
+}
+.json-head{
+  padding:.5rem 1rem;background:var(--raised);
+  display:flex;align-items:center;gap:.5rem;
+  font-family:'Space Mono',monospace;font-size:.55rem;
+  color:var(--muted);letter-spacing:.1em;
+}
+.json-blink{width:5px;height:5px;border-radius:50%;background:var(--glow);animation:s-blink 1s ease-in-out infinite;}
+.json-body{
+  padding:.9rem 1rem;background:#060a0688;
+  font-family:'Space Mono',monospace;font-size:.65rem;
+  color:var(--muted);line-height:2;word-break:break-all;
+}
+.jk{color:#86efac;}.jv{color:#fbbf24;}.jp{color:var(--border2);}
+
+/* ─── SIDE PANEL ─────────────────────────────────────────── */
+.side{display:flex;flex-direction:column;gap:1rem;}
+
+/* ─── MOOD CARD ──────────────────────────────────────────── */
+.mood-c{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:1.8rem;
+  position:relative;overflow:hidden;
+}
+.mood-c::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 100% 100% at 0% 100%,#4ade8008,transparent 60%);
+}
+.mood-eyebrow{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;}
+.mood-line{font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-style:italic;font-weight:300;color:var(--cream);line-height:1.5;transition:opacity .5s;min-height:1.8rem;}
+
+/* ─── STATS CARD ─────────────────────────────────────────── */
+.stats-c{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:1.8rem;
+}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:1rem;}
+.stat{
+  background:var(--raised);border:1px solid var(--border);
+  border-radius:14px;padding:.9rem 1rem;
+}
+.stat-k{font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;}
+.stat-v{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:300;color:var(--cream);}
+
+/* ─── CONFIG CARD ────────────────────────────────────────── */
+.cfg-c{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:1.8rem;
+}
+.cfg-rows{margin-top:.8rem;display:flex;flex-direction:column;gap:.5rem;}
+.cfg-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:.5rem .8rem;background:var(--raised);border-radius:10px;
+  font-family:'Space Mono',monospace;font-size:.58rem;
+}
+.cfg-k{color:var(--muted);letter-spacing:.08em;}
+.cfg-v{color:#86efac;}
+
+/* ─── SECTION TITLE ──────────────────────────────────────── */
+.sec-title{
+  font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);display:flex;align-items:center;gap:.7rem;
+}
+.sec-title::before{content:'';display:block;width:20px;height:1px;background:var(--muted);}
+
+/* ─── FOOTER ─────────────────────────────────────────────── */
+footer{
+  margin-top:5rem;padding-top:1.5rem;
+  border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+  font-family:'Space Mono',monospace;font-size:.5rem;
+  color:#2a3a2a;letter-spacing:.1em;text-transform:uppercase;
+}
+
+/* ─── REVEAL ANIM ────────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(20px);transition:opacity .7s,transform .7s;}
+.rv.in{opacity:1;transform:none;}
+</style>
+</head>
+<body>
+
+<!-- Cursor -->
+<div id="c1"></div>
+<div id="c2"></div>
+
+<!-- Loader -->
+<div id="loader">
+  <div class="ldr-ring">
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <circle class="ldr-arc" cx="40" cy="40" r="34"/>
+    </svg>
+    <div class="ldr-emoji">🌿</div>
+  </div>
+  <div class="ldr-txt">PlantSense · Démarrage</div>
+</div>
+
+<!-- Particle BG -->
+<canvas id="bg-canvas"></canvas>
+
+<div class="wrap">
+
+  <!-- NAV -->
+  <nav class="rv">
+    <div class="logo">
+      <div class="logo-orb"><span>🌱</span></div>
+      <div>
+        <div class="logo-name">Plant<b>Sense</b></div>
+        <div class="logo-tag">IUT Paris Pajol · BLE 4.0 · v3.0</div>
+      </div>
+    </div>
+    <button class="btn" id="connectBtn" onclick="toggleConnect()">
+      <div class="btn-glow"></div>
+      <span id="btnTxt">◉ Connecter</span>
+    </button>
+  </nav>
+
+  <!-- STATUS -->
+  <div class="status-bar rv" id="sPill" style="transition-delay:.05s">
+    <span class="s-dot" id="sDot"></span>
+    <span id="sTxt">En attente de connexion BLE…</span>
+    <span id="s-time"></span>
+  </div>
+
+  <!-- HERO CARDS -->
+  <div class="hero rv" style="transition-delay:.1s">
+
+    <!-- TEMPERATURE -->
+    <div class="mc" id="mcT" style="--mc-col:#4ade80;--mc-glow:#4ade8012">
+      <div class="mc-label"><span class="dot"></span>Température</div>
+      <div class="arc-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="arc-track" cx="60" cy="60" r="52"/>
+          <circle class="arc-glow" id="agT" cx="60" cy="60" r="52" stroke="#4ade80"/>
+          <circle class="arc-fill" id="afT" cx="60" cy="60" r="52" stroke="#4ade80"/>
+        </svg>
+        <div class="arc-center">
+          <div class="arc-val" id="vT" style="color:#4ade80">—</div>
+          <div class="arc-unit">°C</div>
+        </div>
+      </div>
+      <div class="mc-footer">
+        <span class="mc-name">🌡 Air</span>
+        <span class="mc-trend" id="trendT">—</span>
+      </div>
+    </div>
+
+    <!-- HUMIDITE AIR -->
+    <div class="mc" id="mcH" style="--mc-col:#2dd4bf;--mc-glow:#2dd4bf12">
+      <div class="mc-label"><span class="dot" style="background:#2dd4bf"></span>Humidité air</div>
+      <div class="arc-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="arc-track" cx="60" cy="60" r="52"/>
+          <circle class="arc-glow" id="agH" cx="60" cy="60" r="52" stroke="#2dd4bf"/>
+          <circle class="arc-fill" id="afH" cx="60" cy="60" r="52" stroke="#2dd4bf"/>
+        </svg>
+        <div class="arc-center">
+          <div class="arc-val" id="vH" style="color:#2dd4bf">—</div>
+          <div class="arc-unit">% HR</div>
+        </div>
+      </div>
+      <div class="mc-footer">
+        <span class="mc-name">💧 Atm.</span>
+        <span class="mc-trend" id="trendH">—</span>
+      </div>
+    </div>
+
+    <!-- PRESSION -->
+    <div class="mc" id="mcP" style="--mc-col:#fbbf24;--mc-glow:#fbbf2412">
+      <div class="mc-label"><span class="dot" style="background:#fbbf24"></span>Pression</div>
+      <div class="arc-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="arc-track" cx="60" cy="60" r="52"/>
+          <circle class="arc-glow" id="agP" cx="60" cy="60" r="52" stroke="#fbbf24"/>
+          <circle class="arc-fill" id="afP" cx="60" cy="60" r="52" stroke="#fbbf24"/>
+        </svg>
+        <div class="arc-center">
+          <div class="arc-val" id="vP" style="color:#fbbf24;font-size:1.6rem">—</div>
+          <div class="arc-unit">hPa</div>
+        </div>
+      </div>
+      <div class="mc-footer">
+        <span class="mc-name">🌬 Baro.</span>
+        <span class="mc-trend" id="trendP">—</span>
+      </div>
+    </div>
+
+    <!-- SOL -->
+    <div class="mc" id="mcS" style="--mc-col:#c4956a;--mc-glow:#c4956a12">
+      <div class="mc-label"><span class="dot" style="background:#c4956a"></span>Humidité sol</div>
+      <div class="arc-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="arc-track" cx="60" cy="60" r="52"/>
+          <circle class="arc-glow" id="agS" cx="60" cy="60" r="52" stroke="#c4956a"/>
+          <circle class="arc-fill" id="afS" cx="60" cy="60" r="52" stroke="#c4956a"/>
+        </svg>
+        <div class="arc-center">
+          <div class="arc-val" id="vS" style="color:#c4956a">—</div>
+          <div class="arc-unit">% sol</div>
+        </div>
+      </div>
+      <div class="mc-footer">
+        <span class="mc-name">🪴 Substrat</span>
+        <span class="mc-trend" id="trendS">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="grid2">
+
+    <!-- LEFT: Charts + JSON -->
+    <div class="chart-c rv" style="transition-delay:.18s">
+      <div class="cc-head">
+        <div>
+          <div class="cc-title">Historique température</div>
+          <div class="cc-sub">30 dernières mesures · mise à jour 2s</div>
+        </div>
+        <div id="tempLive" style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:#4ade80">—</div>
+      </div>
+      <canvas id="sparkCanvas"></canvas>
+
+      <div style="margin-top:1.5rem">
+        <div class="cc-head">
+          <div class="cc-title" style="font-size:1.1rem">Humidité substrat</div>
+          <div id="soilLive" style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:#c4956a">—</div>
+        </div>
+        <canvas id="soilCanvas"></canvas>
+      </div>
+
+      <div class="json-wrap" style="margin-top:1.5rem">
+        <div class="json-head">
+          <div class="json-blink"></div>
+          <span>TRAME BLE LIVE</span>
+          <span style="margin-left:auto;font-size:.5rem" id="frameCount">0 trames</span>
+        </div>
+        <div class="json-body" id="jsonBody">En attente…</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Side panel -->
+    <div class="side">
+
+      <!-- Mood -->
+      <div class="mood-c rv" style="transition-delay:.22s">
+        <div class="mood-eyebrow">État de la plante</div>
+        <div class="mood-line" id="moodLine">En attente de données…</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-c rv" style="transition-delay:.26s">
+        <div class="sec-title">Session</div>
+        <div class="stats-grid">
+          <div class="stat"><div class="stat-k">T° min</div><div class="stat-v" id="stTmin">—</div></div>
+          <div class="stat"><div class="stat-k">T° max</div><div class="stat-v" id="stTmax">—</div></div>
+          <div class="stat"><div class="stat-k">Sol min</div><div class="stat-v" id="stSmin">—</div></div>
+          <div class="stat"><div class="stat-k">Sol max</div><div class="stat-v" id="stSmax">—</div></div>
+          <div class="stat" style="grid-column:span 2"><div class="stat-k">Trames reçues</div><div class="stat-v" id="stN">0</div></div>
+        </div>
+      </div>
+
+      <!-- Config -->
+      <div class="cfg-c rv" style="transition-delay:.3s">
+        <div class="sec-title">Config BLE</div>
+        <div class="cfg-rows">
+          <div class="cfg-row"><span class="cfg-k">Service UUID</span><span class="cfg-v">FFE0</span></div>
+          <div class="cfg-row"><span class="cfg-k">Caract. UUID</span><span class="cfg-v">FFE1</span></div>
+          <div class="cfg-row"><span class="cfg-k">Baud rate</span><span class="cfg-v">9600</span></div>
+          <div class="cfg-row"><span class="cfg-k">Intervalle</span><span class="cfg-v">2000 ms</span></div>
+          <div class="cfg-row"><span class="cfg-k">Firmware</span><span class="cfg-v">v3.0</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="rv" style="transition-delay:.35s">
+    <span>🌿 PlantSense v3.0</span>
+    <span>IUT de Paris Pajol · Université Paris Cité · 23 mars 2026</span>
+  </footer>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CURSOR
+// ══════════════════════════════════════════════════════════
+const c1=document.getElementById('c1'),c2=document.getElementById('c2');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  c1.style.left=mx+'px';c1.style.top=my+'px';
+});
+(function curl(){rx+=(mx-rx)*.1;ry+=(my-ry)*.1;c2.style.left=rx+'px';c2.style.top=ry+'px';requestAnimationFrame(curl);})();
+document.querySelectorAll('button').forEach(b=>{
+  b.addEventListener('mouseenter',()=>{c1.style.width='20px';c1.style.height='20px';c2.style.width='50px';c2.style.height='50px';});
+  b.addEventListener('mouseleave',()=>{c1.style.width='8px';c1.style.height='8px';c2.style.width='32px';c2.style.height='32px';});
+});
+
+// ══════════════════════════════════════════════════════════
+// PARTICLE BACKGROUND
+// ══════════════════════════════════════════════════════════
+(function initBg(){
+  const cv=document.getElementById('bg-canvas');
+  const ctx=cv.getContext('2d');
+  let W,H,pts=[];
+  function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;createPts();}
+  function createPts(){
+    pts=[];
+    const N=Math.floor(W*H/18000);
+    for(let i=0;i<N;i++){
+      pts.push({
+        x:Math.random()*W,y:Math.random()*H,
+        vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,
+        r:Math.random()*1.5+.3,
+        a:Math.random()*.6+.1,
+        col:Math.random()>.6?'#4ade80':'#34d399'
+      });
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // Draw connections
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<120){
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x,pts[i].y);
+          ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.strokeStyle=`rgba(74,222,128,${(1-dist/120)*.06})`;
+          ctx.stroke();
+        }
+      }
+      // Draw dot
+      ctx.beginPath();
+      ctx.arc(pts[i].x,pts[i].y,pts[i].r,0,Math.PI*2);
+      ctx.fillStyle=pts[i].col+(Math.round(pts[i].a*255).toString(16).padStart(2,'0'));
+      ctx.fill();
+      // Move
+      pts[i].x+=pts[i].vx;pts[i].y+=pts[i].vy;
+      if(pts[i].x<0)pts[i].x=W;if(pts[i].x>W)pts[i].x=0;
+      if(pts[i].y<0)pts[i].y=H;if(pts[i].y>H)pts[i].y=0;
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);
+  resize();draw();
+})();
+
+// ══════════════════════════════════════════════════════════
+// LOADER + REVEAL
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('loader').classList.add('fade');
+    document.querySelectorAll('.rv').forEach((el,i)=>setTimeout(()=>el.classList.add('in'),i*80));
+    drawSpark();drawSoil();
+    setInterval(()=>{if(!connected)demoTick();},2200);
+  },1800);
+});
+
+// ══════════════════════════════════════════════════════════
+// BLE
+// ══════════════════════════════════════════════════════════
+const SVC='0000ffe0-0000-1000-8000-00805f9b34fb';
+const CHR='0000ffe1-0000-1000-8000-00805f9b34fb';
+let device=null,connected=false,buf='';
+const hist={t:[],s:[]};
+const prev={t:null,s:null};
+const sess={n:0,tMin:Infinity,tMax:-Infinity,sMin:Infinity,sMax:-Infinity};
+const CIRC=2*Math.PI*52;
+
+async function toggleConnect(){
+  if(connected){if(device&&device.gatt.connected)device.gatt.disconnect();return;}
+  if(!navigator.bluetooth){setS('err','Web Bluetooth non supporté — utilise Chrome ou Edge');return;}
+  try{
+    setS('','Scan BLE en cours…');
+    device=await navigator.bluetooth.requestDevice({
+      filters:[{services:[SVC]},{namePrefix:'HM'},{namePrefix:'BT'},{namePrefix:'Plant'}],
+      optionalServices:[SVC]
+    });
+    device.addEventListener('gattserverdisconnected',()=>{
+      connected=false;
+      document.getElementById('btnTxt').textContent='◉ Connecter';
+      document.getElementById('connectBtn').classList.remove('on');
+      setS('err','Déconnecté — cliquez pour reconnecter');
+    });
+    setS('','Connexion GATT…');
+    const srv=await device.gatt.connect();
+    const svc=await srv.getPrimaryService(SVC);
+    const ch=await svc.getCharacteristic(CHR);
+    await ch.startNotifications();
+    ch.addEventListener('characteristicvaluechanged',onData);
+    connected=true;
+    document.getElementById('btnTxt').textContent='◉ Déconnecter';
+    document.getElementById('connectBtn').classList.add('on');
+    setS('live','Connecté à '+(device.name||'module BLE'));
+  }catch(e){setS('err','Erreur : '+e.message);}
+}
+
+function onData(e){
+  buf+=new TextDecoder().decode(e.target.value);
+  let s=buf.indexOf('{');
+  while(s!==-1){
+    let d=0,en=-1;
+    for(let i=s;i<buf.length;i++){if(buf[i]==='{')d++;else if(buf[i]==='}'){d--;if(d===0){en=i;break;}}}
+    if(en===-1)break;
+    const js=buf.slice(s,en+1);buf=buf.slice(en+1);
+    try{const o=JSON.parse(js);if(o.t!==undefined||o.s!==undefined)tick(o);}catch(_){}
+    s=buf.indexOf('{');
+  }
+  if(buf.length>500)buf='';
+}
+
+// ══════════════════════════════════════════════════════════
+// TICK — update all UI
+// ══════════════════════════════════════════════════════════
+function tick(d){
+  sess.n++;
+  document.getElementById('stN').textContent=sess.n;
+  document.getElementById('s-time').textContent=new Date().toLocaleTimeString('fr-FR');
+  document.getElementById('frameCount').textContent=sess.n+' trames';
+
+  if(d.t!=null){
+    const v=parseFloat(d.t);
+    const tr=prev.t!==null?(v>prev.t?'↑ '+Math.abs(v-prev.t).toFixed(1):'↓ '+Math.abs(v-prev.t).toFixed(1)):'—';
+    const col=v>30?'#fb7185':v>27?'#fbbf24':'#4ade80';
+    setArc('vT','afT','agT',v,-10,50,col,v.toFixed(1));
+    document.getElementById('trendT').textContent=tr;
+    document.getElementById('trendT').style.color=v>prev.t?'#fb7185':'#4ade80';
+    document.getElementById('tempLive').textContent=v.toFixed(1)+'°';
+    document.getElementById('tempLive').style.color=col;
+    if(v>30)card('mcT','hot');else if(v>27)card('mcT','warn');else card('mcT','');
+    hist.t.push(v);if(hist.t.length>30)hist.t.shift();
+    prev.t=v;
+    sess.tMin=Math.min(sess.tMin,v);sess.tMax=Math.max(sess.tMax,v);
+    document.getElementById('stTmin').textContent=sess.tMin.toFixed(1)+'°';
+    document.getElementById('stTmax').textContent=sess.tMax.toFixed(1)+'°';
+    drawSpark();
+  }
+  if(d.h!=null){
+    const v=parseFloat(d.h);
+    setArc('vH','afH','agH',v,0,100,'#2dd4bf',v.toFixed(1));
+    document.getElementById('trendH').textContent=(v<30?'🏜 sec':v>70?'💦 humide':'✓ ok');
+  }
+  if(d.p!=null){
+    const v=parseFloat(d.p);
+    const pct=Math.max(0,Math.min(100,((v-970)/(1060-970))*100));
+    setArc('vP','afP','agP',pct,0,100,'#fbbf24',Math.round(v)+'');
+    document.getElementById('trendP').textContent=v>1020?'▲ haut':v<1000?'▼ bas':'— stable';
+  }
+  if(d.s!=null){
+    const v=parseInt(d.s);
+    const col=v<20?'#fb7185':v<40?'#fbbf24':'#c4956a';
+    setArc('vS','afS','agS',v,0,100,col,v+'');
+    document.getElementById('trendS').textContent=(v<20?'🚨 urgence':v<35?'⚠ sec':v>80?'💦 trop':'✓ ok');
+    document.getElementById('soilLive').textContent=v+'%';
+    document.getElementById('soilLive').style.color=col;
+    if(v<20)card('mcS','hot');else if(v<35)card('mcS','warn');else card('mcS','');
+    hist.s.push(v);if(hist.s.length>30)hist.s.shift();
+    prev.s=v;
+    sess.sMin=Math.min(sess.sMin,v);sess.sMax=Math.max(sess.sMax,v);
+    document.getElementById('stSmin').textContent=sess.sMin+'%';
+    document.getElementById('stSmax').textContent=sess.sMax+'%';
+    drawSoil();
+  }
+
+  // JSON
+  document.getElementById('jsonBody').innerHTML=
+    JSON.stringify(d,null,0)
+      .replace(/"([^"]+)":/g,'<span class="jk">"$1"</span><span class="jp">:</span>')
+      .replace(/:([\d.]+)/g,':<span class="jv">$1</span>');
+
+  // Mood
+  const t=parseFloat(d.t),s2=parseInt(d.s),h=parseFloat(d.h);
+  const moods=[
+    [s2<20,'😰 Urgence hydrique — arrose immédiatement !'],
+    [s2<35,'😟 Le sol s\'assèche. Un peu d\'eau s\'impose.'],
+    [t>32,'🥵 Chaleur excessive. Éloigne du soleil.'],
+    [t<8,'🥶 Trop froid pour la plante.'],
+    [s2>85,'💦 Sol gorgé d\'eau. Laisse sécher.'],
+    [h<25,'🏜 Air très sec. Pense à brumiser.'],
+    [t>25&&s2>50,'🌞 Conditions estivales idéales.'],
+  ];
+  const found=moods.find(([c])=>c);
+  const msg=found?found[1]:'🌿 Conditions parfaites — ta plante est épanouie.';
+  const el=document.getElementById('moodLine');
+  el.style.opacity=0;setTimeout(()=>{el.textContent=msg;el.style.opacity=1;},300);
+}
+
+function setArc(valId,fillId,glowId,val,min,max,color,disp){
+  document.getElementById(valId).textContent=disp;
+  document.getElementById(valId).style.color=color;
+  const pct=Math.max(0,Math.min(1,(val-min)/(max-min)));
+  const dash=pct*CIRC;
+  document.getElementById(fillId).style.strokeDasharray=dash+' '+CIRC;
+  document.getElementById(fillId).style.stroke=color;
+  document.getElementById(glowId).style.strokeDasharray=dash+' '+CIRC;
+  document.getElementById(glowId).style.stroke=color;
+}
+function card(id,cls){
+  document.getElementById(id).className='mc rv in'+(cls?' '+cls:'');
+}
+function setS(type,msg){
+  document.getElementById('sPill').className='status-bar rv in'+(type==='live'?' live':type==='err'?' err':'');
+  document.getElementById('sDot').className='s-dot'+(type==='live'?' live':type==='err'?' err':'');
+  document.getElementById('sTxt').textContent=msg;
+}
+
+// ══════════════════════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════════════════════
+function drawChart(cvId,data,color,min,max){
+  const cv=document.getElementById(cvId);
+  const dpr=window.devicePixelRatio||1,W=cv.offsetWidth,H=cv.offsetHeight||140;
+  cv.width=W*dpr;cv.height=H*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  if(!data||data.length<2){
+    ctx.fillStyle='#ffffff05';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#2a3a2a';ctx.font='10px "Space Mono"';ctx.textAlign='center';
+    ctx.fillText('En attente…',W/2,H/2);return;
+  }
+  const mn=Math.min(min!==undefined?min:Math.min(...data)-1,Math.min(...data)-1);
+  const mx=Math.max(max!==undefined?max:Math.max(...data)+1,Math.max(...data)+1);
+  const tx=i=>(i/(data.length-1))*(W-2)+1;
+  const ty=v=>H-4-((v-mn)/(mx-mn))*(H-8);
+
+  // Grid lines
+  for(let i=0;i<=4;i++){
+    const y=4+i*(H-8)/4;
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);
+    ctx.strokeStyle='#ffffff04';ctx.lineWidth=1;ctx.stroke();
+  }
+
+  // Fill
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    if(i===0){ctx.moveTo(tx(0),ty(v));return;}
+    const px=tx(i-1),py=ty(data[i-1]);
+    ctx.bezierCurveTo(px+(tx(i)-px)*.45,py,tx(i)-(tx(i)-px)*.45,ty(v),tx(i),ty(v));
+  });
+  ctx.lineTo(tx(data.length-1),H);ctx.lineTo(tx(0),H);ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,color+'44');g.addColorStop(.6,color+'11');g.addColorStop(1,color+'00');
+  ctx.fillStyle=g;ctx.fill();
+
+  // Stroke
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    if(i===0){ctx.moveTo(tx(0),ty(v));return;}
+    const px=tx(i-1),py=ty(data[i-1]);
+    ctx.bezierCurveTo(px+(tx(i)-px)*.45,py,tx(i)-(tx(i)-px)*.45,ty(v),tx(i),ty(v));
+  });
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+
+  // Last point glow
+  const lx=tx(data.length-1),ly=ty(data[data.length-1]);
+  const rg=ctx.createRadialGradient(lx,ly,0,lx,ly,12);
+  rg.addColorStop(0,color+'88');rg.addColorStop(1,color+'00');
+  ctx.beginPath();ctx.arc(lx,ly,12,0,Math.PI*2);ctx.fillStyle=rg;ctx.fill();
+  ctx.beginPath();ctx.arc(lx,ly,3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+
+  // Labels
+  ctx.fillStyle='#2a3a2a';ctx.font='8px "Space Mono"';ctx.textAlign='left';
+  ctx.fillText(mx.toFixed(1),4,11);ctx.fillText(mn.toFixed(1),4,H-2);
+}
+
+function drawSpark(){drawChart('sparkCanvas',hist.t,'#4ade80');}
+function drawSoil(){drawChart('soilCanvas',hist.s,'#c4956a',0,100);}
+
+// ══════════════════════════════════════════════════════════
+// DEMO
+// ══════════════════════════════════════════════════════════
+let ph=0;
+function demoTick(){
+  ph+=.05;
+  tick({
+    t:parseFloat((21+Math.sin(ph)*3.5+Math.random()*.4).toFixed(1)),
+    h:parseFloat((60+Math.cos(ph*.6)*10+Math.random()).toFixed(1)),
+    p:parseFloat((1013+Math.sin(ph*.25)*5).toFixed(1)),
+    s:Math.round(50+Math.sin(ph*.4)*18+Math.random()*2),
+    r:590+Math.round(Math.random()*30)
+  });
+  if(!connected)setS('','✦ Démonstration — données simulées en temps réel');
+}
+
+window.addEventListener('resize',()=>{drawSpark();drawSoil();});
+</script>
+</body>
+</html>
